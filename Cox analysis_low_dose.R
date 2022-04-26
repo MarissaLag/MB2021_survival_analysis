@@ -1,8 +1,8 @@
 
 
 
-Data=read.table("Data.txt",header=TRUE)
-Pedigree=read.table("Pedigree.txt",header=TRUE)
+Data=read.table("Data_low_dose.txt",header=TRUE)
+
 
 
 
@@ -32,7 +32,7 @@ library(ggpubr)
 
 *******
 
-setwd("/Users/tim/Desktop/Marissa_MB_Challenge")
+setwd("/Users/"/Users/maris/OneDrive/Documents/USRA2021/mb2021")
 
 getwd()
 
@@ -64,4 +64,6 @@ fit.coxph =coxph(Surv(TD,Binary)~treatment,data=Data)
 summary(fit.coxph)
 
 ggforest(fit.coxph, data=Data)
+
+
 
