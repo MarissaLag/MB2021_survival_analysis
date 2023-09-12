@@ -52,12 +52,8 @@ fit1 = survfit(surv_object~treatment, data=Data)
 
 summary(fit1)
 
-ggsurvplot(fit1, data=Data, pval = TRUE, legend = "bottom", legend.title="Treatment", font.legend =c(9,"plain","black"), legend.labs=c("Control","Low_salinity","High_salinity"))
+ggsurvplot(fit1, data=Data, pval = TRUE, legend = "bottom", legend.title="Treatment", font.legend =c(9,"plain","black"), legend.labs=c("Control","High_salinity","Low_salinity"))
 
-
-*****fit a cox proportional hazards model for size and family*****
-
-****note family as text in data file****
 
 fit.coxph =coxph(Surv(TD,Binary)~treatment,data=Data)
 
