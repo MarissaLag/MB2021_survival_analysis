@@ -1,7 +1,7 @@
 
 
 
-Data=read.table("Data_low_dose.txt",header=TRUE)
+Data=read.table("PB2023_spat_challenge.txt",header=TRUE)
 
 
 
@@ -44,22 +44,24 @@ Data=read.table("Data_low_dose.txt",header=TRUE)
 
 head(Data)
 
-surv_object = Surv(time=Data$TD, event=Data$Binary)
+surv_object = Surv(time=Data$TE, event=Data$Outcome)
 
 surv_object
 
-fit1 = survfit(surv_object~treatment, data=Data)
+fit1 = survfit(surv_object~Treatment, data=Data)
 
 summary(fit1)
 
-ggsurvplot(fit1, data=Data, pval = TRUE, legend = "bottom", legend.title="Treatment", font.legend =c(9,"plain","black"), legend.labs=c("Control","High_salinity","Low_salinity"))
+ggsurvplot(fit1, data=Data, pval = TRUE, legend = "bottom", legend.title="Treatment", font.legend =c(9,"plain","black")
 
 
-fit.coxph =coxph(Surv(TD,Binary)~treatment,data=Data)
+fit.coxph =coxph(Surv(TE,Outcome)~Treatment,data=Data)
 
 summary(fit.coxph)
 
-ggforest(fit.coxph, data=Data)
+plot <- ggforest(fit.coxph, data=Data)
 
+plot <- plot + theme(text = element_text(size = 14))
 
+plot
 
