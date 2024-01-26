@@ -56,6 +56,65 @@ fit1 = survfit(surv_object~Treatment, data=Data)
 
 summary(fit1)
 
+plot(fit1, xlab="Survival Time in Days",
+   ylab="% Surviving", yscale=100,
+   main="Survival Distribution (Overall)")
+
+
+#Post Hoc test ----
+
+
+comp(ten(fit1))
+
+res <- pairwise_survdiff(Surv(time=Data$TE, event=Data$Outcome) ~ Genetics,
+     data = Data)
+
+survminer::pairwise_survdiff(Surv(time=Data$TE, event=Data$Outcome) ~ Genetics,
+                                    data = Data, p.adjust.method = "BH")
+                                    
+ library(emmeans)
+ 
+ #have to change from integer to character
+ 
+ str(Data)
+ 
+ Data$Genetics <- as.character(Data$Genetics)
+ 
+s2<-Surv(time=Data$TE, event=Data$Outcome, type="right")
+P2<-survreg(s2~Treatment*Genetics, data=Data)
+pa2<-anova(P2)
+Prr<-emmeans(P2, ~Treatment*Genetics)
+contrast(Prr, method="pairwise")
+
+
+
+
+
+s2<-Surv(time=Data$TE, event=Data$Outcome, type="right")
+P2<-survreg(s2~Treatment, data=Data)
+pa2<-anova(P2)
+Prr<-emmeans(P2, ~Treatment)
+contrast(Prr, method="pairwise")
+
+
+
+s2<-Surv(time=Data$TE, event=Data$Outcome, type="right")
+P2<-survreg(s2~Genetics, data=Data)
+pa2<-anova(P2)
+Prr<-emmeans(P2, ~Genetics)
+contrast(Prr, method="pairwise")
+
+
+#getting error: Error in model.frame.default(formula = survival_data ~ Genetics, data = data[.subset,  : 
+  variable lengths differ (found for 'Genetics')
+
+> length(Surv(time = Data$TE, event = Data$Outcome))
+[1] 432
+> length(Data$Genetics)
+[1] 432
+
+
+
 #risk.table = TRUE, tables.theme = theme_cleantable()   # to add risk table
 #size = adjust line thickness
 
@@ -142,5 +201,45 @@ plot <- plot + theme(text = element_text(size = 14))
 
 plot
 
+#Look at Genetic effects
 
-  
+Data$Genetics <- as.character(Data$Genetics)
+
+fit.coxph <- coxph(Surv(TE, Outcome) ~ Genetics, data = Data)
+
+summary(fit.coxph)
+
+# Create forest plot
+library(survminer)
+
+plot <- ggforest(
+  fit.coxph,
+  data = Data,
+  main = "Hazard ratio",
+  fontsize = 1,
+  noDigits = 2
+)
+
+# Adjust font size
+plot <- plot + theme(text = element_text(size = 14))
+
+# Print the plot
+print(plot)
+
+
+#hazard ratio ---- 
+
+fit.coxph =coxph(Surv(TE,Outcome)~Treatment,data=Data)
+
+summary(fit.coxph)
+
+plot <- ggforest(fit.coxph, data=Data, main = "Hazard ratio",
+fontsize = 1,
+noDigits = 2
+)
+
+plot <- plot + theme(text = element_text(size = 14))
+
+plot
+
+
