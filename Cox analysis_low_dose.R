@@ -30,14 +30,8 @@ library(ggplot2)
 
 library(ggpubr)
 
-  
-#WD ---- 
+library(emmeans)
 
-setwd("/Users/"/Users/maris/OneDrive/Documents/USRA2021/mb2021")
-
-getwd()
-
-list.files(path=".")
 
 #Data ----
  
@@ -63,16 +57,6 @@ plot(fit1, xlab="Survival Time in Days",
 
 #Post Hoc test ----
 
-
-comp(ten(fit1))
-
-res <- pairwise_survdiff(Surv(time=Data$TE, event=Data$Outcome) ~ Genetics,
-     data = Data)
-
-survminer::pairwise_survdiff(Surv(time=Data$TE, event=Data$Outcome) ~ Genetics,
-                                    data = Data, p.adjust.method = "BH")
-                                    
- library(emmeans)
  
  #have to change from integer to character
  
@@ -80,30 +64,66 @@ survminer::pairwise_survdiff(Surv(time=Data$TE, event=Data$Outcome) ~ Genetics,
  
  Data$Genetics <- as.character(Data$Genetics)
  
+ #run post-hoc
+ #source: https://stackoverflow.com/questions/77752878/using-post-hoc-testing-survreg-with-emmeans-in-r-when-certain-experimental-t 
+ 
 s2<-Surv(time=Data$TE, event=Data$Outcome, type="right")
 P2<-survreg(s2~Treatment*Genetics, data=Data)
 pa2<-anova(P2)
 Prr<-emmeans(P2, ~Treatment*Genetics)
-contrast(Prr, method="pairwise")
+Prr2 <- contrast(Prr, method="pairwise")
+
+write.csv(Prr2, file = "Prr2_table.csv", row.names = FALSE)
+
+Prr2_table <- read_csv("Prr2_table.csv")
+
+#heatmap - data gas to be in correct format
+#example format
+data <- as.matrix(mtcars)
+View(data)
+
+heatmap(data)
+
+
+Prr2_matrix <- as.matrix(Prr2_table)
+
+row_names <- Prr2_matrix[, 1]
+
+rownames(Prr2_matrix) <- row_names
+
+#remove column
+
+updated_matrix <- Prr2_matrix[, -c(1, 2, 3, 4)]
+
+str(Prr2_matrix)
+
+View(updated_matrix)
+
+updated_matrix <- apply(updated_matrix, 2, as.numeric)
+
+heatmap(updated_matrix, 
+        Rowv = NA, 
+        Colv = NA, 
+        col = cm.colors(256),
+        scale = "column",  # Use "row" or "none" for different scaling options
+        main = "Heatmap Example",
+        xlab = "Columns",
+        ylab = "Rows")
+
+#format as heatmap?
 
 
 
 
+#other methods? code below doesn't work yet
 
-s2<-Surv(time=Data$TE, event=Data$Outcome, type="right")
-P2<-survreg(s2~Treatment, data=Data)
-pa2<-anova(P2)
-Prr<-emmeans(P2, ~Treatment)
-contrast(Prr, method="pairwise")
+comp(ten(fit1))
 
+res <- pairwise_survdiff(Surv(time=Data$TE, event=Data$Outcome) ~ Genetics,
+                         data = Data)
 
-
-s2<-Surv(time=Data$TE, event=Data$Outcome, type="right")
-P2<-survreg(s2~Genetics, data=Data)
-pa2<-anova(P2)
-Prr<-emmeans(P2, ~Genetics)
-contrast(Prr, method="pairwise")
-
+survminer::pairwise_survdiff(Surv(time=Data$TE, event=Data$Outcome) ~ Genetics,
+                             data = Data, p.adjust.method = "BH")
 
 #getting error: Error in model.frame.default(formula = survival_data ~ Genetics, data = data[.subset,  : 
   variable lengths differ (found for 'Genetics')
@@ -115,6 +135,7 @@ contrast(Prr, method="pairwise")
 
 
 
+  #Risk tables ----
 #risk.table = TRUE, tables.theme = theme_cleantable()   # to add risk table
 #size = adjust line thickness
 
@@ -226,8 +247,6 @@ plot <- plot + theme(text = element_text(size = 14))
 # Print the plot
 print(plot)
 
-
-#hazard ratio ---- 
 
 fit.coxph =coxph(Surv(TE,Outcome)~Treatment,data=Data)
 
