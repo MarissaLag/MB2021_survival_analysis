@@ -54,6 +54,35 @@ plot(fit1, xlab="Survival Time in Days",
    ylab="% Surviving", yscale=100,
    main="Survival Distribution (Overall)")
 
+#Log rank test ----
+
+#Chi-Squared test
+survdiff(Surv(time = TE, 
+              event = Outcome == "1") ~ Treatment + Genetics, 
+         data = Data,
+         rho = 0)
+#pairwise
+survdiff <- pairwise_survdiff(Surv(time = TE, 
+              event = Outcome == "1") ~ Treatment + Genetics, 
+         data = Data,
+         rho = 0)
+
+write.table(survdiff, file = "survdiff_table.txt", sep = "\t", row.names = FALSE)
+
+# Save as a comma-separated values (CSV) file using write.csv
+write.csv(data_matrix, file = "data_table.csv", row.names = FALSE)
+
+
+survdiff_table <- tbl_summary(
+  survdiff,
+  by = c("strata1", "strata2"),
+  missing = "no"
+)
+
+# Print the table
+survdiff_table
+write.csv(survdiff, file = "Survdiff_table.csv", row.names = FALSE)
+
 
 #Post Hoc test ----
 
@@ -81,11 +110,12 @@ Prr2_table <- read_csv("Prr2_table.csv")
 #example format
 data <- as.matrix(mtcars)
 View(data)
-
 heatmap(data)
 
 
 Prr2_matrix <- as.matrix(Prr2_table)
+
+View(Prr2_matrix)
 
 row_names <- Prr2_matrix[, 1]
 
@@ -260,5 +290,54 @@ noDigits = 2
 plot <- plot + theme(text = element_text(size = 14))
 
 plot
+
+
+#test for interactions
+
+install.packages("gtsummary")
+install.packages("gt")
+install.packages("broom")
+library(gtsummary)
+library(gt)
+library(broom)
+
+
+interact <- 
+  coxph(Surv(time = TE, 
+             event = Outcome == '1') ~ Treatment + Genetics + Treatment:Genetics, 
+        data = Data)
+
+tbl_regression(interact, exponentiate = TRUE) %>%
+  as_gt()
+
+no_interact <- 
+  coxph(Surv(time = TE, 
+             event = Outcome == '1') ~ Treatment + Genetics, 
+        data = Data)
+tidy(no_interact, exponentiate = TRUE, conf.int = TRUE)
+
+
+anova(interact,no_interact, test = 'Chisq')
+
+#if p<0.05 you should include the interaction
+
+
+#contracts ----
+
+
+#PH assumption - relative hazard remains constant over time with different predictor or covariate levels.
+#hazards vary because the susceptibility of a disease varies between patients
+#PH assumption implies the HR measuring the effect of any predictor is constant over time.
+
+zph <- cox.zph(interact, transform = 'km')
+zph
+
+plot(zph, var = "Treatment")
+plot(zph, var = "Genetics")
+
+#if violates PH assumption (p<0.05) - In the case of serious violation of proportionality of hazard, we can remedy using
+#stratified cox regression or
+#extended cox regression using time-varying dependent variable or
+#parametric survival analysis
 
 
