@@ -322,7 +322,7 @@ anova(interact,no_interact, test = 'Chisq')
 #if p<0.05 you should include the interaction
 
 
-#contracts ----
+#contrasts ----
 
 
 #PH assumption - relative hazard remains constant over time with different predictor or covariate levels.
@@ -336,8 +336,99 @@ plot(zph, var = "Treatment")
 plot(zph, var = "Genetics")
 
 #if violates PH assumption (p<0.05) - In the case of serious violation of proportionality of hazard, we can remedy using
-#stratified cox regression or
+#stratified cox regression (i.e., exclude covariates that do not pass assumption) or
 #extended cox regression using time-varying dependent variable or
 #parametric survival analysis
 
+#source for below: https://bookdown.org/drki_musa/dataanalysis/parametric-survival-analysis.html#advantages-of-parametric-survival-analysis-models
 
+
+#Parametric analysis ----
+#trying parametric survival analysis
+#convert all variables to factors
+
+
+install.packages("flexsurv")
+install.packages("SurvRegCensCov")
+library(dplyr)
+library(gtsummary)
+library(broom)
+library(flexsurv)
+library(SurvRegCensCov)
+
+d1<- Data %>% 
+  dplyr::select(animal, Treatment, Plate, Genetics, Tank, TE, Outcome) %>%
+  mutate_if(is.character, as.factor)
+glimpse(d1)
+
+d1$Treatment <- recode(d1$Treatment, "Control" = "1", "Probiotics" = "2", "Killed-Probiotics" = "3")
+
+
+#eda = exploratory data analysis
+
+d1 %>% 
+  mutate(status = recode(Outcome,"0" = "Censored", "1" = "Death")) %>% 
+  tbl_summary(by = status,
+              statistic = list(all_continuous() ~ "{mean} ({sd})", 
+                               all_categorical() ~ "{n} ({p}%)"),
+              type = list(where(is.logical) ~ "categorical"),
+              label = list(Treatment ~ "Treatment", 
+                           Genetics ~ "Family", 
+                           TE ~ "Time of death"),
+              missing_text = "Missing") %>% 
+  modify_caption("**EDA**")  %>%
+  modify_header(label ~ "**Variable**") %>% 
+  modify_spanning_header(c("stat_1", "stat_2") ~ "**Survival Status**") %>%
+  modify_footnote(all_stat_cols() ~ "Mean (SD) or Frequency (%)") %>%
+  bold_labels() %>%
+  as_gt()
+
+
+#We can use the survreg() from survival package. However survreg() only perform estimation for AFT metric.
+
+exp.mod.aft <- survreg(Surv(TE, Outcome) ~ Genetics + Treatment, 
+                       data = d1, dist = 'exponential')
+summary(exp.mod.aft)
+
+
+#results:
+Call:
+  survreg(formula = Surv(TE, Outcome) ~ Treatment + Genetics, data = d1, 
+          dist = "exponential")
+Value Std. Error     z      p
+(Intercept)                 2.4704     0.1546 15.98 <2e-16
+TreatmentKilled-Probiotics  0.2654     0.1476  1.80 0.0721
+TreatmentProbiotics         0.4540     0.1549  2.93 0.0034
+Genetics                   -0.0157     0.0502 -0.31 0.7550
+
+Scale fixed at 1 
+
+Exponential distribution
+Loglik(model)= -932.8   Loglik(intercept only)= -937.3
+Chisq= 9.04 on 3 degrees of freedom, p= 0.029 
+Number of Newton-Raphson Iterations: 4 
+n= 432
+
+#estimating a Weibull parametric survival model which will return a accelerated failure metric:
+
+wei.mod.aft <- survreg(Surv(TE, Outcome) ~ Treatment + Genetics, 
+                       data = d1, dist = 'weibull')
+summary(wei.mod.aft)
+
+survreg(formula = Surv(TE, Outcome) ~ Treatment + Genetics, data = d1, 
+        dist = "weibull")
+Value Std. Error      z       p
+(Intercept)                 2.23723    0.03670  60.96 < 2e-16
+TreatmentKilled-Probiotics  0.09302    0.03450   2.70   0.007
+TreatmentProbiotics         0.15024    0.03631   4.14 3.5e-05
+Genetics                   -0.00486    0.01173  -0.41   0.678
+Log(scale)                 -1.46263    0.05488 -26.65 < 2e-16
+
+Scale= 0.232 
+
+Weibull distribution
+Loglik(model)= -726.2   Loglik(intercept only)= -735.4
+Chisq= 18.5 on 3 degrees of freedom, p= 0.00035 
+Number of Newton-Raphson Iterations: 5 
+
+ConvertWeibull(wei.mod.aft, conf.level = 0.95)
