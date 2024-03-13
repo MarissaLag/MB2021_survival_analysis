@@ -3,7 +3,7 @@
 
 Data=read.table("PB2023_spat_challenge.txt",header=TRUE)
 
-
+Data=read.table("mb2021_lowdose3_NEW_family_labels.txt",header=TRUE)
 
 #Packages ----
 
@@ -37,12 +37,14 @@ library(emmeans)
  
 Data=read.table("PB2023_spat_challenge.txt",header=TRUE)
 
+Data=spat.challenge_mb2021_lowdose_correctfamilies_2024
+
 head(Data)
 
 
 #Surv curve ----
 
-surv_object = Surv(time=Data$TE, event=Data$Outcome)
+surv_object = Surv(time=Data$Time.elapsed, event=Data$Outcome)
 
 surv_object
 
@@ -50,20 +52,34 @@ fit1 = survfit(surv_object~Treatment, data=Data)
 
 summary(fit1)
 
-plot(fit1, xlab="Survival Time in Days",
+plot(fit1, xlab="Survival Time in Days", color = Treatment,
    ylab="% Surviving", yscale=100,
    main="Survival Distribution (Overall)")
+
+#Caution with ggsurvplot - axis titles can be mismatched, will
+#follow alphabetical order
+
+ggsurvplot(fit1, data=Data, pval = TRUE, legend = "bottom", legend.title="Treatment", font.legend =c(9,"plain","black"), legend.labs=c("Control","Low_salinity","High_salinity"))
+
+color_palette <- c("#E41A1C", "#377EB8", "#4DAF4A", "#984EA3", "#FF7F00") # Example color palette
+
+# ggsurvplot with the specified color palette
+ggsurvplot(fit1, data = Data, pval = TRUE, legend = "bottom", legend.title = "Treatment",
+           font.legend = c(9, "plain", "black"), legend.labs = c("Control", "High_salinity", "Low_salinity"),
+           palette = color_palette)
+
+
 
 #Log rank test ----
 
 #Chi-Squared test
-survdiff(Surv(time = TE, 
-              event = Outcome == "1") ~ Treatment + Genetics, 
+survdiff(Surv(time = TD, 
+              event = Binary == "1") ~ Treatment + Family, 
          data = Data,
          rho = 0)
 #pairwise
-survdiff <- pairwise_survdiff(Surv(time = TE, 
-              event = Outcome == "1") ~ Treatment + Genetics, 
+survdiff <- pairwise_survdiff(Surv(time = TD, 
+              event = Binary == "1") ~ Treatment + Family, 
          data = Data,
          rho = 0)
 
@@ -211,8 +227,9 @@ xlab = "Time (Days)"
 
 #Facet_grid surv curve ----  
 
+View(Data)
 
-fit3 <- survfit( surv_object ~Treatment + Genetics,
+fit3 <- survfit( surv_object ~Treatment + Family,
                 data = Data )
                 
 ggsurv <- ggsurvplot(fit3, 
@@ -230,7 +247,7 @@ legend = "none",
 surv.col = "Treatment"
 )
 
-curv_facet <- ggsurv$plot + facet_grid(Treatment ~ Genetics)
+curv_facet <- ggsurv$plot + facet_grid(Treatment ~ Family)
 
 curv_facet
 
@@ -239,7 +256,7 @@ curv_facet
 
 #hazard ratio ----
 
-fit.coxph =coxph(Surv(TE,Outcome)~Treatment,data=Data)
+fit.coxph =coxph(Surv(Time.elapsed,Outcome)~Treatment,data=Data)
 
 summary(fit.coxph)
 
