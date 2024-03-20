@@ -39,34 +39,70 @@ Data=read.table("PB2023_spat_challenge.txt",header=TRUE)
 
 Data=spat.challenge_mb2021_lowdose_correctfamilies_2024
 
+Data=mb2021_lowdose_NEW_family_labels
+
 head(Data)
 
+#in mb2021 data may want to remove T9 - had no deaths in low treatment but died very quick in high dose treatment
+#worried that T9 did not receive vibrio...T9 is also a major outlier in LS treatment. Lets try removing the data.
+
+Data_T9_removed <- Data %>% 
+  filter(!Tank == "9")
+
+View(Data_T9_removed)
+
+#Also going to try removed Family 1 altogether and see if Treatment trend remains. 
+
+Data_T9_removed <- Data %>% 
+  filter(!Family == "1")
+
+View(Data_T9_removed)
+
+
+#Also replace Treatment numbering with Treatment names
+#where (1=Control, 2=LS, and 2=HS)
+#Can keep numerical format if you'd like, but make sure it is a character (not integer) for hazard ratio test. 
+
+Data$Treatment[Data$Treatment == 1] <- "Control"
+Data$Treatment[Data$Treatment == 2] <- "Low salinity"
+Data$Treatment[Data$Treatment == 3] <- "High salinity"
+
+Data_T9_removed$Treatment[Data_T9_removed$Treatment == 1] <- "Control"
+Data_T9_removed$Treatment[Data_T9_removed$Treatment == 2] <- "Low salinity"
+Data_T9_removed$Treatment[Data_T9_removed$Treatment == 3] <- "High salinity"
 
 #Surv curve ----
 
 surv_object = Surv(time=Data$Time.elapsed, event=Data$Outcome)
 
+#surv_object = Surv(time=Data$TD, event=Data$Binary)
+
+#surv_object = Surv(time=Data_T9_removed$Time.elapsed, event=Data_T9_removed$Outcome)
+
 surv_object
 
 fit1 = survfit(surv_object~Treatment, data=Data)
 
+#fit1 = survfit(surv_object~Treatment, data=Data_T9_removed)
+
 summary(fit1)
 
-plot(fit1, xlab="Survival Time in Days", color = Treatment,
+plot(fit1, xlab="Survival Time in Days", color = "Treatment",
    ylab="% Surviving", yscale=100,
    main="Survival Distribution (Overall)")
 
 #Caution with ggsurvplot - axis titles can be mismatched, will
 #follow alphabetical order
 
-ggsurvplot(fit1, data=Data, pval = TRUE, legend = "bottom", legend.title="Treatment", font.legend =c(9,"plain","black"), legend.labs=c("Control","Low_salinity","High_salinity"))
+ggsurvplot(fit1, data=Data_T9_removed, pval = TRUE, legend = "bottom", legend.title="Treatment", font.legend =c(9,"plain","black"), legend.labs=c("Control","Low_salinity","High_salinity"))
 
 color_palette <- c("#E41A1C", "#377EB8", "#4DAF4A", "#984EA3", "#FF7F00") # Example color palette
 
 # ggsurvplot with the specified color palette
-ggsurvplot(fit1, data = Data, pval = TRUE, legend = "bottom", legend.title = "Treatment",
-           font.legend = c(9, "plain", "black"), legend.labs = c("Control", "High_salinity", "Low_salinity"),
-           palette = color_palette)
+ggsurvplot(fit1, data = Data_T9_removed, pval = TRUE, legend = "bottom", legend.title = "Treatment",
+           font.legend = c(14, "plain", "black"), legend.labs = c("Control", "Low salinity", "High salinity"),
+           palette = color_palette, ylim = c(0, 1),
+           conf.int = TRUE)
 
 
 
@@ -227,15 +263,21 @@ xlab = "Time (Days)"
 
 #Facet_grid surv curve ----  
 
+
 View(Data)
 
-fit3 <- survfit( surv_object ~Treatment + Family,
+
+
+#fit3 <- survfit( surv_object ~Treatment + Family,
                 data = Data )
+
+fit3 <- survfit( surv_object ~Treatment,
+                 data = Data )
                 
 ggsurv <- ggsurvplot(fit3, 
 data = Data, 
 conf.int = TRUE,
-risk.table = TRUE, 
+risk.table = FALSE, 
 risk.table.col="strata",
 ggtheme = theme_classic(),
 break.time.by = 2,
@@ -243,29 +285,31 @@ font.x = 14,
 font.y = 14,
 font.tickslab = 12,
 xlab = "Time (Days)",
-legend = "none",
-surv.col = "Treatment"
+legend = "bottom",
+surv.col = "Treatment",
+legend.labs = c("Control", "High salinity", "Low salinity")
 )
 
-curv_facet <- ggsurv$plot + facet_grid(Treatment ~ Family)
+curv_facet <- ggsurv$plot + facet_grid("Treatment")
 
 curv_facet
 
 
 
-
-#hazard ratio ----
+#Hazard ratio ----
 
 fit.coxph =coxph(Surv(Time.elapsed,Outcome)~Treatment,data=Data)
+#fit.coxph =coxph(Surv(Time.elapsed,Outcome)~Treatment,data=Data_T9_removed)
 
 summary(fit.coxph)
 
-plot <- ggforest(fit.coxph, data=Data, main = "Hazard ratio",
+plot <- ggforest(fit.coxph, data=Data_T9_removed, main = "Hazard ratio",
 fontsize = 1,
 noDigits = 2
 )
 
-plot <- plot + theme(text = element_text(size = 14))
+plot <- plot + theme(text = element_text(size = 12
+                                        ))
 
 plot
 
@@ -339,7 +383,7 @@ anova(interact,no_interact, test = 'Chisq')
 #if p<0.05 you should include the interaction
 
 
-#contrasts ----
+#Contrasts (attempts) ----
 
 
 #PH assumption - relative hazard remains constant over time with different predictor or covariate levels.
@@ -360,7 +404,7 @@ plot(zph, var = "Genetics")
 #source for below: https://bookdown.org/drki_musa/dataanalysis/parametric-survival-analysis.html#advantages-of-parametric-survival-analysis-models
 
 
-#Parametric analysis ----
+#Parametric analysis (attempts) ----
 #trying parametric survival analysis
 #convert all variables to factors
 
