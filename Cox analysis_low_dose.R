@@ -1,9 +1,13 @@
 
+Cox_larval_vibrio <- read.delim("~/Documents/MSc/larval vibrio challenge/Cox_larval_vibrio.txt")
 
 
-Data=read.table("PB2023_spat_challenge.txt",header=TRUE)
+#Data=read.table("PB2023_spat_challenge.txt",header=TRUE)
 
-Data=read.table("mb2021_lowdose3_NEW_family_labels.txt",header=TRUE)
+#Data=read.table("mb2021_lowdose3_NEW_family_labels.txt",header=TRUE)
+
+#Data=read.table("highdose_newnew2T17.txt",header=TRUE)
+
 
 #Packages ----
 
@@ -35,45 +39,59 @@ library(emmeans)
 
 #Data ----
  
-Data=read.table("PB2023_spat_challenge.txt",header=TRUE)
+# Data=read.table("PB2023_spat_challenge.txt",header=TRUE)
+# 
+# Data=spat.challenge_mb2021_lowdose_correctfamilies_2024
+# 
+# Data=mb2021_lowdose_NEW_family_labels
 
-Data=spat.challenge_mb2021_lowdose_correctfamilies_2024
-
-Data=mb2021_lowdose_NEW_family_labels
+Data = Cox_larval_vibrio
 
 head(Data)
 
 #in mb2021 data may want to remove T9 - had no deaths in low treatment but died very quick in high dose treatment
 #worried that T9 did not receive vibrio...T9 is also a major outlier in LS treatment. Lets try removing the data.
 
-Data_T9_removed <- Data %>% 
-  filter(!Tank == "9")
+# Data_T9_removed <- Data %>% 
+#   filter(!Tank == "9")
+# 
+# View(Data_T9_removed)
+# 
+# #Also going to try removed Family 1 altogether and see if Treatment trend remains. 
+# 
+# Data_T9_removed <- Data %>% 
+#   filter(!Family == "1")
+# 
+# View(Data_T9_removed)
 
-View(Data_T9_removed)
+#MU42022 - remove family 4 
 
-#Also going to try removed Family 1 altogether and see if Treatment trend remains. 
-
-Data_T9_removed <- Data %>% 
-  filter(!Family == "1")
-
-View(Data_T9_removed)
+Data <- Data %>% 
+  filter(!Genetics == "4")
 
 
 #Also replace Treatment numbering with Treatment names
 #where (1=Control, 2=LS, and 2=HS)
 #Can keep numerical format if you'd like, but make sure it is a character (not integer) for hazard ratio test. 
 
-Data$Treatment[Data$Treatment == 1] <- "Control"
-Data$Treatment[Data$Treatment == 2] <- "Low salinity"
-Data$Treatment[Data$Treatment == 3] <- "High salinity"
+# Data$Treatment[Data$Treatment == 1] <- "Control"
+# Data$Treatment[Data$Treatment == 2] <- "Low salinity"
+# Data$Treatment[Data$Treatment == 3] <- "High salinity"
+# 
+# Data_T9_removed$Treatment[Data_T9_removed$Treatment == 1] <- "Control"
+# Data_T9_removed$Treatment[Data_T9_removed$Treatment == 2] <- "Low salinity"
+# Data_T9_removed$Treatment[Data_T9_removed$Treatment == 3] <- "High salinity"
 
-Data_T9_removed$Treatment[Data_T9_removed$Treatment == 1] <- "Control"
-Data_T9_removed$Treatment[Data_T9_removed$Treatment == 2] <- "Low salinity"
-Data_T9_removed$Treatment[Data_T9_removed$Treatment == 3] <- "High salinity"
+
+#MU42022 renaming
+Data$treatment[Data$treatment == "PH"] <- "Probiotics + HT"
+Data$treatment[Data$treatment == "Probiotic"] <- "Probiotics"
+Data$treatment[Data$treatment == "Heat"] <- "High temperature"
+Data
 
 #Surv curve ----
 
-surv_object = Surv(time=Data$Time.elapsed, event=Data$Outcome)
+# surv_object = Surv(time=Data$TE, event=Data$Outcome)
 
 #surv_object = Surv(time=Data$TD, event=Data$Binary)
 
@@ -81,7 +99,7 @@ surv_object = Surv(time=Data$Time.elapsed, event=Data$Outcome)
 
 surv_object
 
-fit1 = survfit(surv_object~Treatment, data=Data)
+fit1 = survfit(surv_object~treatment, data=Data)
 
 #fit1 = survfit(surv_object~Treatment, data=Data_T9_removed)
 
@@ -94,16 +112,25 @@ plot(fit1, xlab="Survival Time in Days", color = "Treatment",
 #Caution with ggsurvplot - axis titles can be mismatched, will
 #follow alphabetical order
 
-ggsurvplot(fit1, data=Data_T9_removed, pval = TRUE, legend = "bottom", legend.title="Treatment", font.legend =c(9,"plain","black"), legend.labs=c("Control","Low_salinity","High_salinity"))
+ggsurvplot(fit1, data=Data, pval = TRUE, legend = "bottom", legend.title="Treatment", font.legend =c(9,"plain","black"))
+           #legend.labs=c("Control","Low_salinity","High_salinity"))
 
-color_palette <- c("#E41A1C", "#377EB8", "#4DAF4A", "#984EA3", "#FF7F00") # Example color palette
+color_palette <- c("grey", "#FF7F00", "#4DAF4A","#377EB8") # Example color palette
 
 # ggsurvplot with the specified color palette
-ggsurvplot(fit1, data = Data_T9_removed, pval = TRUE, legend = "bottom", legend.title = "Treatment",
-           font.legend = c(14, "plain", "black"), legend.labs = c("Control", "Low salinity", "High salinity"),
-           palette = color_palette, ylim = c(0, 1),
-           conf.int = TRUE)
+ggsurvplot(fit1, data = Data, pval = TRUE, legend = "bottom", legend.title = "Treatment",
+           font.legend = c(12, "plain", "black"), legend.labs = c("Control", "High temperature (HT)", "Probiotics + HT", "Probiotics"),
+           palette = color_palette, ylim = c(0.4, 1),
+           conf.int = FALSE,
+           lwd = 1.5,
+           linetype = "strata")
 
+ggsurvplot(fit1, data = Data, pval = TRUE, legend = "bottom", legend.title = "Treatment",
+           font.legend = c(12, "plain", "black"), 
+           palette = color_palette, ylim = c(0, 1),
+           conf.int = FALSE,
+           lwd = 1.5,
+           linetype = "strata")
 
 
 #Log rank test ----
@@ -298,12 +325,12 @@ curv_facet
 
 #Hazard ratio ----
 
-fit.coxph =coxph(Surv(Time.elapsed,Outcome)~Treatment,data=Data)
+fit.coxph =coxph(Surv(TE,Outcome)~treatment,data=Data)
 #fit.coxph =coxph(Surv(Time.elapsed,Outcome)~Treatment,data=Data_T9_removed)
 
 summary(fit.coxph)
 
-plot <- ggforest(fit.coxph, data=Data_T9_removed, main = "Hazard ratio",
+plot <- ggforest(fit.coxph, data=Data, main = "Hazard ratio",
 fontsize = 1,
 noDigits = 2
 )
