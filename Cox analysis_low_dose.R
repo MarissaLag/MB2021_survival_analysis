@@ -45,7 +45,9 @@ library(emmeans)
 # 
 # Data=mb2021_lowdose_NEW_family_labels
 
-Data = Cox_larval_vibrio
+Data = PB2024_2_spat_challenge_R
+
+Data = PB2023_spat_challenge
 
 head(Data)
 
@@ -69,6 +71,12 @@ head(Data)
 Data <- Data %>% 
   filter(!Genetics == "4")
 
+Data <- Data %>% 
+  filter(!Larval_Treatment %in% c("PB_Dil_2", "PB_Dil_3", "PB_Dil_4"))
+
+Data <- Data %>% 
+  filter(!Tank %in% c("23", "24"))
+
 
 #Also replace Treatment numbering with Treatment names
 #where (1=Control, 2=LS, and 2=HS)
@@ -91,7 +99,7 @@ Data
 
 #Surv curve ----
 
-# surv_object = Surv(time=Data$TE, event=Data$Outcome)
+surv_object = Surv(time=Data$TE, event=Data$Outcome)
 
 #surv_object = Surv(time=Data$TD, event=Data$Binary)
 
@@ -99,7 +107,7 @@ Data
 
 surv_object
 
-fit1 = survfit(surv_object~treatment, data=Data)
+fit1 = survfit(surv_object~Treatment, data=Data)
 
 #fit1 = survfit(surv_object~Treatment, data=Data_T9_removed)
 
@@ -118,12 +126,18 @@ ggsurvplot(fit1, data=Data, pval = TRUE, legend = "bottom", legend.title="Treatm
 color_palette <- c("grey", "#FF7F00", "#4DAF4A","#377EB8") # Example color palette
 
 # ggsurvplot with the specified color palette
+# ggsurvplot(fit1, data = Data, pval = TRUE, legend = "bottom", legend.title = "Treatment",
+#            font.legend = c(12, "plain", "black"), legend.labs = c("Control", "High temperature (HT)", "Probiotics + HT", "Probiotics"),
+#            palette = color_palette, ylim = c(0.4, 1),
+#            conf.int = FALSE,
+#            lwd = 1.5,
+#            linetype = "strata")
+
 ggsurvplot(fit1, data = Data, pval = TRUE, legend = "bottom", legend.title = "Treatment",
-           font.legend = c(12, "plain", "black"), legend.labs = c("Control", "High temperature (HT)", "Probiotics + HT", "Probiotics"),
-           palette = color_palette, ylim = c(0.4, 1),
+           font.legend = c(12, "plain", "black"),
+           palette = color_palette, ylim = c(0.2, 1),
            conf.int = FALSE,
-           lwd = 1.5,
-           linetype = "strata")
+           lwd = 1.5)
 
 ggsurvplot(fit1, data = Data, pval = TRUE, legend = "bottom", legend.title = "Treatment",
            font.legend = c(12, "plain", "black"), 
@@ -141,8 +155,8 @@ survdiff(Surv(time = TD,
          data = Data,
          rho = 0)
 #pairwise
-survdiff <- pairwise_survdiff(Surv(time = TD, 
-              event = Binary == "1") ~ Treatment + Family, 
+survdiff <- pairwise_survdiff(Surv(time = TE, 
+              event = Outcome == "1") ~ Treatment + Genetics, 
          data = Data,
          rho = 0)
 
@@ -228,6 +242,9 @@ heatmap(updated_matrix,
 
 comp(ten(fit1))
 
+Data$Genetics <- as.factor(Data$Genetics)
+Data$Treatment <- as.factor(Data$Treatment)
+
 res <- pairwise_survdiff(Surv(time=Data$TE, event=Data$Outcome) ~ Genetics,
                          data = Data)
 
@@ -235,11 +252,11 @@ survminer::pairwise_survdiff(Surv(time=Data$TE, event=Data$Outcome) ~ Genetics,
                              data = Data, p.adjust.method = "BH")
 
 #getting error: Error in model.frame.default(formula = survival_data ~ Genetics, data = data[.subset,  : 
-  variable lengths differ (found for 'Genetics')
+#variable lengths differ (found for 'Genetics')
 
-> length(Surv(time = Data$TE, event = Data$Outcome))
+length(Surv(time = Data$TE, event = Data$Outcome))
 [1] 432
-> length(Data$Genetics)
+length(Data$Genetics)
 [1] 432
 
 
@@ -248,22 +265,26 @@ survminer::pairwise_survdiff(Surv(time=Data$TE, event=Data$Outcome) ~ Genetics,
 #risk.table = TRUE, tables.theme = theme_cleantable()   # to add risk table
 #size = adjust line thickness
 
+color_palette <- c("grey", "#FF7F00", "#4DAF4A")
+
 ggsurvplot(fit1, 
 data=Data, 
 pval = TRUE,
 legend.title = "Treatment",
+conf.int = TRUE,
 legend = "bottom",
 legend.labs = c("Control", "Killed-Probiotics", "Probiotics"),
-font.legend =c(12,"plain","black"),
+font.legend =c(16,"plain","black"),
 break.time.by = 2,
 pval.size = 7,
 ggtheme = theme_classic(),
 font.main = c(16, "bold"),
-font.x = 14,
-font.y = 14,
-font.tickslab = 12,
+font.x = 15,
+font.y = 15,
+font.tickslab = 14,
 size = 1.5,
-xlab = "Time (Days)"
+xlab = "Time (Days)",
+palette = color_palette
 )
 
 #plot cumulative hazard estimates - different from Kaplein-Meier, use "fun" argument.
@@ -285,57 +306,66 @@ font.x = 14,
 font.y = 14,
 font.tickslab = 12,
 size = 1.5,
-xlab = "Time (Days)"
+xlab = "Time (Days)",
+palette = color_palette
 )
 
 #Facet_grid surv curve ----  
-
-
-View(Data)
-
-
-
-#fit3 <- survfit( surv_object ~Treatment + Family,
-                data = Data )
-
-fit3 <- survfit( surv_object ~Treatment,
+surv_object = Surv(time=Data$TE, event=Data$Outcome)
+fit3 <- survfit( surv_object ~ Treatment + Genetics,
                  data = Data )
-                
-ggsurv <- ggsurvplot(fit3, 
-data = Data, 
-conf.int = TRUE,
-risk.table = FALSE, 
-risk.table.col="strata",
-ggtheme = theme_classic(),
-break.time.by = 2,
-font.x = 14,
-font.y = 14,
-font.tickslab = 12,
-xlab = "Time (Days)",
-legend = "bottom",
-surv.col = "Treatment",
-legend.labs = c("Control", "High salinity", "Low salinity")
+ggsurvplot(
+  fit3, 
+  data = Data, 
+  conf.int = TRUE,
+  # risk.table.col = "strata",
+  ggtheme = theme_classic() +
+    theme(strip.text = element_text(size = 14)), # Adjust font size and style
+  break.time.by = 2,
+  font.x = 14,
+  font.y = 14,
+  font.tickslab = 12,
+  xlab = "Time (Days)",
+  legend = "bottom",
+  surv.col = "Treatment",
+  legend.labs = c("Control", "Killed-Probiotics", "Probiotics"), 
+  facet.by = "Genetics",
+  palette = color_palette
 )
 
-curv_facet <- ggsurv$plot + facet_grid("Treatment")
+ggs <- ggsurvplot(
+  fit3, 
+  data = Data, 
+  conf.int = FALSE,
+  pval = TRUE,
+  ggtheme = theme_classic(),
+  break.time.by = 2,
+  font.x = 14,
+  font.y = 14,
+  font.tickslab = 12,
+  xlab = "Time (Days)",
+  legend = "bottom",
+  surv.col = "Treatment",
+  legend.labs = c("Control - F1", "Killed-Probiotics - F1", "Probiotics - F1","Control - F2", "Killed-Probiotics - F2", "Probiotics - F2", "Control - F4", "Killed-Probiotics - F4", "Probiotics - F4"), 
+)
 
-curv_facet
+plot <- ggs + facet_grid(~Genetics)
 
 
 
 #Hazard ratio ----
 
-fit.coxph =coxph(Surv(TE,Outcome)~treatment,data=Data)
+fit.coxph =coxph(Surv(TE,Outcome)~Treatment*Genetics,data=Data)
 #fit.coxph =coxph(Surv(Time.elapsed,Outcome)~Treatment,data=Data_T9_removed)
 
 summary(fit.coxph)
 
 plot <- ggforest(fit.coxph, data=Data, main = "Hazard ratio",
-fontsize = 1,
+fontsize = 1.3,
 noDigits = 2
 )
 
-plot <- plot + theme(text = element_text(size = 12
+plot <- plot + theme(text = element_text(size = 15
                                         ))
 
 plot
@@ -438,18 +468,21 @@ plot(zph, var = "Genetics")
 
 install.packages("flexsurv")
 install.packages("SurvRegCensCov")
+install.packages("gtsummary")
 library(dplyr)
 library(gtsummary)
 library(broom)
 library(flexsurv)
 library(SurvRegCensCov)
 
+str(Data)
+
 d1<- Data %>% 
-  dplyr::select(animal, Treatment, Plate, Genetics, Tank, TE, Outcome) %>%
+  dplyr::select(animal, Treatment, Genetics, TE, Outcome) %>%
   mutate_if(is.character, as.factor)
 glimpse(d1)
 
-d1$Treatment <- recode(d1$Treatment, "Control" = "1", "Probiotics" = "2", "Killed-Probiotics" = "3")
+# d1$Treatment <- recode(d1$Treatment, "Control" = "1", "Probiotics" = "2", "Killed-Probiotics" = "3")
 
 
 #eda = exploratory data analysis
@@ -474,49 +507,38 @@ d1 %>%
 
 #We can use the survreg() from survival package. However survreg() only perform estimation for AFT metric.
 
-exp.mod.aft <- survreg(Surv(TE, Outcome) ~ Genetics + Treatment, 
+exp.mod.aft <- survreg(Surv(TE, Outcome) ~ Genetics*Treatment, 
                        data = d1, dist = 'exponential')
 summary(exp.mod.aft)
 
-
-#results:
-Call:
-  survreg(formula = Surv(TE, Outcome) ~ Treatment + Genetics, data = d1, 
-          dist = "exponential")
-Value Std. Error     z      p
-(Intercept)                 2.4704     0.1546 15.98 <2e-16
-TreatmentKilled-Probiotics  0.2654     0.1476  1.80 0.0721
-TreatmentProbiotics         0.4540     0.1549  2.93 0.0034
-Genetics                   -0.0157     0.0502 -0.31 0.7550
-
-Scale fixed at 1 
-
-Exponential distribution
-Loglik(model)= -932.8   Loglik(intercept only)= -937.3
-Chisq= 9.04 on 3 degrees of freedom, p= 0.029 
-Number of Newton-Raphson Iterations: 4 
-n= 432
-
 #estimating a Weibull parametric survival model which will return a accelerated failure metric:
+#Distribution: The Weibull distribution generalizes the exponential distribution by allowing the hazard rate to change over time. It can model:
+# Increasing hazard rates (aging-related risks).
+# Decreasing hazard rates (burn-in periods or early failures).
 
-wei.mod.aft <- survreg(Surv(TE, Outcome) ~ Treatment + Genetics, 
+wei.mod.aft <- survreg(Surv(TE, Outcome) ~ Treatment*Genetics, 
                        data = d1, dist = 'weibull')
 summary(wei.mod.aft)
+AIC(wei.mod.aft)
+# Extracting residuals
+residuals_wei <- residuals(wei.mod.aft)
 
-survreg(formula = Surv(TE, Outcome) ~ Treatment + Genetics, data = d1, 
-        dist = "weibull")
-Value Std. Error      z       p
-(Intercept)                 2.23723    0.03670  60.96 < 2e-16
-TreatmentKilled-Probiotics  0.09302    0.03450   2.70   0.007
-TreatmentProbiotics         0.15024    0.03631   4.14 3.5e-05
-Genetics                   -0.00486    0.01173  -0.41   0.678
-Log(scale)                 -1.46263    0.05488 -26.65 < 2e-16
+# Plot residuals
+plot(residuals_wei, main = "Residuals of Weibull Model", ylab = "Residuals", xlab = "Index")
+abline(h = 0, col = "red")
 
-Scale= 0.232 
+qqnorm(residuals_wei)
+qqline(residuals_wei, col = "red")
 
-Weibull distribution
-Loglik(model)= -726.2   Loglik(intercept only)= -735.4
-Chisq= 18.5 on 3 degrees of freedom, p= 0.00035 
-Number of Newton-Raphson Iterations: 5 
+#Export summary as table
+install.packages(c("broom", "kableExtra"))  # or use "gt"
+library(broom)
+library(kableExtra)  # for kableExtra tables
 
-ConvertWeibull(wei.mod.aft, conf.level = 0.95)
+# Create a tidy summary of the model
+tidy_summary <- tidy(wei.mod.aft)
+# Create a formatted table
+summary_table <- tidy_summary %>%
+  kable("html", caption = "Weibull Model Summary") %>%
+  kable_styling(full_width = F, position = "left")
+
